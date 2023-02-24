@@ -47,14 +47,20 @@ pip install -r requirements.txt
 ## Spuštění z příkazové řádky
 
 ```bash
-python src\gui.py
+python main.py
 ```
 
 Lze spustit také pouze skript, který sloučí soubory
 
 ```bash
-python src\merge_files.py 1 out.csv in1.xlsx in2.xlsx
+python merge.py 1 out.csv in1.xlsx in2.xlsx
 ```
 
+## .exe soubor
 
+Spuštění pomocí .exe souboru je možné pouze na Windows. Soubor je vytvořen pomocí pyinstalleru.
+
+```bash
+pyinstaller main.py --onefile --windowed --icon=favicon.ico
+```
 

@@ -1,20 +1,20 @@
-import tkinter as tk
-import tkinter.filedialog
+import tkinter as tk 
+from tkinter import filedialog
 import os
 
-from merge_files import merge_files_into_xlsx, merge_files_into_csv
+from merge import merge_files_into_xlsx, merge_files_into_csv
 
 def create_window():
 
     root = tk.Tk()
     root.title("Merge xlsx files")
-    root.geometry("550x350")
+    root.geometry("550x600")
 
     
     # Function to select a folder
     def select_folder( ):
         
-        folder_path = tk.filedialog.askdirectory()
+        folder_path = filedialog.askdirectory()
         if folder_path == "":
             return
         print("Selected Folder:", folder_path)
@@ -37,11 +37,13 @@ def create_window():
             
     def select_outfile():
         filetypes= [
-            ("CSV files", "*.csv"),
-            ("Excel files", "*.xlsx")
+            ("CSV files", ".csv"),
+            ("Excel files", ".xlsx")
         ]
         
-        out_path = tk.filedialog.asksaveasfile(filetypes=filetypes).name
+        out = filedialog.asksaveasfilename(filetypes=filetypes,  defaultextension=".csv", initialfile="output.csv")
+        out_path = out 
+        print(out)
         print("Selected File:", out_path)
 
         out_file_entry.delete(0, tk.END)
@@ -124,7 +126,7 @@ def create_window():
     save_csv = lambda: save(False)
 
     top_panel = tk.Frame(root, padx=5, pady=5)
-    top_panel.pack(side=tk.TOP, fill=tk.X, expand=True)
+    top_panel.pack(side=tk.TOP, fill=tk.X)
     top_panel.columnconfigure(1, weight=1)
 
     # Create a label and entry widget for a number
@@ -148,6 +150,8 @@ def create_window():
     
     list_grid = tk.Frame(root, padx=5, pady=5)
     list_grid.pack(expand=True, fill=tk.BOTH)
+    
+    list_grid.rowconfigure(1, weight=1)
 
     button_grid = tk.Frame(list_grid, padx=5, pady=5)
     button_grid.pack(side=tk.LEFT, anchor=tk.N)
