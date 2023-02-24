@@ -1,8 +1,9 @@
-import tkinter as tk 
+import tkinter as tk
 from tkinter import filedialog
 import os
 
 from merge import merge_files_into_xlsx, merge_files_into_csv
+
 
 def create_window():
 
@@ -10,39 +11,40 @@ def create_window():
     root.title("Merge xlsx files")
     root.geometry("550x600")
 
-    
     # Function to select a folder
-    def select_folder( ):
-        
+    def select_folder():
+
         folder_path = filedialog.askdirectory()
         if folder_path == "":
             return
         print("Selected Folder:", folder_path)
-        
+
         in_folder_entry.delete(0, tk.END)
         in_folder_entry.insert(0, folder_path)
-        
+
         # Clear the listbox before adding new items
         file_listbox.delete(0, tk.END)
 
         # Get all files in the selected folder
-        files = [ file for file in os.listdir(folder_path) if file.endswith(".xlsx") ]
-    
+        files = [file for file in os.listdir(
+            folder_path) if file.endswith(".xlsx")]
+
         # Add each file to the listbox
         for file in files:
             file_listbox.insert(tk.END, file)
-        
+
         file_listbox.focus()
         file_listbox.selection_set(0, tk.END)
-            
+
     def select_outfile():
-        filetypes= [
+        filetypes = [
             ("CSV files", ".csv"),
             ("Excel files", ".xlsx")
         ]
-        
-        out = filedialog.asksaveasfilename(filetypes=filetypes,  defaultextension=".csv", initialfile="output.csv")
-        out_path = out 
+
+        out = filedialog.asksaveasfilename(
+            filetypes=filetypes,  defaultextension=".csv", initialfile="output.csv")
+        out_path = out
         print(out)
         print("Selected File:", out_path)
 
@@ -54,76 +56,94 @@ def create_window():
 
     def deselect_all():
         file_listbox.selection_clear(0, tk.END)
-    
+
     def select_invert():
         selection = file_listbox.curselection()
-        file_listbox.selection_set(0, tk.END) 
+        file_listbox.selection_set(0, tk.END)
         for item in selection:
             file_listbox.selection_clear(item)
 
     # Function to move a file up in the list
-    def move_file_up(event=None, to_edge=False):
-        print("Move up")
-        # Get the selected item(s)
+    def move_file_up(event=None):
         selected_indices = file_listbox.curselection()
-
-        # Move each selected item up in the list
+        if 0 in selected_indices:
+            return "break"
         for index in selected_indices:
             if index > 0:
-                where = 0 if to_edge else index - 1
-                file_listbox.insert(where, file_listbox.get(index))
-                file_listbox.selection_set(where)
+                file_listbox.insert(index - 1, file_listbox.get(index))
+                file_listbox.selection_set(index - 1)
                 file_listbox.delete(index + 1)
 
         return "break"  # prevent default bindings from firing
-    
-    def move_file_down(event=None, to_edge=False):
-        # Get the selected item(s)
-        print("Move down")
 
+    def move_file_to_top(event=None):
+        indices = file_listbox.curselection()
+        files = [file_listbox.get(index) for index in indices]
+        for index in reversed(indices):
+            file_listbox.delete(index)
+        for file in reversed(files):
+            file_listbox.insert(0, file)
+            file_listbox.selection_set(0)
+
+        return "break"  # prevent default bindings from firing
+
+    def move_file_down(event=None):
         selected_indices = file_listbox.curselection()
-
-        # Move each selected item down in the list
+        if file_listbox.size() - 1 in selected_indices:
+            return "break"
         for index in reversed(selected_indices):
             if index < file_listbox.size() - 1:
-                where = tk.END if to_edge else index + 2
-                file_listbox.insert(where, file_listbox.get(index))
-                file_listbox.selection_set(where)
+                file_listbox.insert(index + 2, file_listbox.get(index))
+                file_listbox.selection_set(index + 2)
                 file_listbox.delete(index)
 
         return "break"  # prevent default bindings from firing
-    
-    def save(excel = False): 
+
+    def move_file_to_bottom(event=None):
         
         
         
-        result_label.config(text = f"Saving..." )
+        indices = file_listbox.curselection()
         
-        try: 
-            files = [ os.path.join(in_folder_entry.get(), file) for file in file_listbox.get(0, tk.END) ]
+        
+        files = [file_listbox.get(index) for index in indices]
+        for index in reversed(indices):
+            file_listbox.delete(index)
+
+        for file in files:
+            file_listbox.insert(tk.END, file)
+            file_listbox.selection_set(tk.END)
+
+        return "break"  # prevent default bindings from firing
+
+    def save(excel=False):
+
+        result_label.config(text=f"Saving...")
+
+        try:
+            files = [os.path.join(in_folder_entry.get(), file_listbox.get(
+                file)) for file in file_listbox.curselection()]
             out = out_file_entry.get()
             if out == "":
                 out = "output"
             lines = int(lines_entry.get())
-            
+
             expected = ".csv" if not excel else ".xlsx"
-            if(not out.endswith(expected)):
-                out = out.replace( ".csv" if excel else ".xlsx", expected)
-                if(not out.endswith(expected)):
+            if (not out.endswith(expected)):
+                out = out.replace(".csv" if excel else ".xlsx", expected)
+                if (not out.endswith(expected)):
                     out += expected
                 out_file_entry.delete(0, tk.END)
                 out_file_entry.insert(0, out)
-            
+
             func = merge_files_into_xlsx if excel else merge_files_into_csv
-            result = func(files, out, lines)        
-            result_label.config(text = f"Successfully saved {result} lines" )
+            result = func(files, out, lines)
+            result_label.config(text=f"Successfully saved {result} lines")
         except Exception as e:
-            result_label.config(text = f"Failed: " + str(e) )
-            
-            
-    
-    save_xlsx = lambda: save(True)
-    save_csv = lambda: save(False)
+            result_label.config(text=f"Failed: " + str(e))
+
+    def save_xlsx(): return save(True)
+    def save_csv(): return save(False)
 
     top_panel = tk.Frame(root, padx=5, pady=5)
     top_panel.pack(side=tk.TOP, fill=tk.X)
@@ -147,10 +167,10 @@ def create_window():
     out_file_button.grid(column=0, row=2, sticky=tk.EW)
     out_file_entry = tk.Entry(top_panel)
     out_file_entry.grid(column=1, row=2, padx=5, pady=5,  sticky=tk.EW)
-    
+
     list_grid = tk.Frame(root, padx=5, pady=5)
     list_grid.pack(expand=True, fill=tk.BOTH)
-    
+
     list_grid.rowconfigure(1, weight=1)
 
     button_grid = tk.Frame(list_grid, padx=5, pady=5)
@@ -169,10 +189,10 @@ def create_window():
     down_button.grid(column=0, row=1, sticky=tk.NSEW)
 
     top_button = tk.Button(button_grid, text="Move To Top (Ctrl+Shift+↑)",
-                           command=lambda: move_file_up(to_edge=True))
+                           command= move_file_to_top)
     top_button.grid(column=0, row=2, sticky=tk.NSEW)
     bottom_button = tk.Button(button_grid, text="Move To Bottom (Ctrl+Shift+↓)",
-                              command=lambda: move_file_down(to_edge=True))
+                              command=move_file_to_bottom)
     bottom_button.grid(column=0, row=3, sticky=tk.NSEW)
 
     deselect_button = tk.Button(
@@ -185,29 +205,28 @@ def create_window():
         button_grid, text="Invert Selection", command=select_invert)
     select_invert_button.grid(column=0, row=6, sticky=tk.NSEW)
 
-    convert_csv_button = tk.Button(root, text="To .csv (ctrl-K)", command=save_csv)
+    convert_csv_button = tk.Button(
+        root, text="To .csv (ctrl-K)", command=save_csv)
     convert_csv_button.pack(side=tk.LEFT, pady=5, padx=5)
 
-    convert_xlsx_button = tk.Button(root, text="To .xlsx (ctrl-L)", command=save_xlsx)
+    convert_xlsx_button = tk.Button(
+        root, text="To .xlsx (ctrl-L)", command=save_xlsx)
     convert_xlsx_button.pack(side=tk.LEFT, pady=5, padx=5)
-    
-    result_label = tk.Label(root )
+
+    result_label = tk.Label(root)
     result_label.pack(side=tk.LEFT, pady=5, padx=5)
 
     # hotkeys
     file_listbox.bind("<Control-Up>", move_file_up)
     file_listbox.bind("<Control-Down>", move_file_down)
 
-    file_listbox.bind("<Control-Shift-Up>",
-                      lambda event: move_file_up(event, to_edge=True))
-    file_listbox.bind("<Control-Shift-Down>",
-                      lambda event: move_file_down(event, to_edge=True))
-    
+    file_listbox.bind("<Control-Shift-Up>", move_file_to_top)
+    file_listbox.bind("<Control-Shift-Down>", move_file_to_bottom)
+
     root.bind("<Control-k>", lambda event: save_csv)
-    root.bind("<Control-l>",  lambda event: save_xlsx)
+    root.bind("<Control-l>", lambda event: save_xlsx)
     root.bind("<Control-i>", lambda event: select_folder())
     root.bind("<Control-o>", lambda event: select_outfile())
-    
 
     return root
 
