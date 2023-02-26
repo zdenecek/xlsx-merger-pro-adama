@@ -5,11 +5,16 @@ import os
 from merge import merge_files_into_xlsx, merge_files_into_csv
 
 
+def guess_output_name(input_filenames):
+    for name in input_filenames:
+        if "20" in name:
+            return "sum_" + name.split("20")[0].strip()
+
 def create_window():
 
     root = tk.Tk()
     root.title("Merge xlsx files")
-    root.geometry("550x600")
+    root.geometry("600x600")
 
     # Function to select a folder
     def select_folder():
@@ -18,9 +23,10 @@ def create_window():
         if folder_path == "":
             return
         print("Selected Folder:", folder_path)
-
+        
         in_folder_entry.delete(0, tk.END)
         in_folder_entry.insert(0, folder_path)
+        
 
         # Clear the listbox before adding new items
         file_listbox.delete(0, tk.END)
@@ -35,6 +41,14 @@ def create_window():
 
         file_listbox.focus()
         file_listbox.selection_set(0, tk.END)
+        
+        if out_file_entry.get() == "":
+            possible_output_name = guess_output_name(files)
+            possible_output_dir = os.path.join(folder_path, possible_output_name)
+            
+            out_file_entry.delete(0, tk.END)
+            out_file_entry.insert(0, possible_output_dir)
+        
 
     def select_outfile():
         filetypes = [
@@ -45,7 +59,6 @@ def create_window():
         out = filedialog.asksaveasfilename(
             filetypes=filetypes,  defaultextension=".csv", initialfile="output.csv")
         out_path = out
-        print(out)
         print("Selected File:", out_path)
 
         out_file_entry.delete(0, tk.END)
@@ -100,11 +113,7 @@ def create_window():
         return "break"  # prevent default bindings from firing
 
     def move_file_to_bottom(event=None):
-        
-        
-        
         indices = file_listbox.curselection()
-        
         
         files = [file_listbox.get(index) for index in indices]
         for index in reversed(indices):
@@ -116,6 +125,11 @@ def create_window():
 
         return "break"  # prevent default bindings from firing
 
+    def remove(event=None):
+        indices = file_listbox.curselection()
+        for index in reversed(indices):
+            file_listbox.delete(index)
+
     def save(excel=False):
 
         result_label.config(text=f"Saving...")
@@ -126,7 +140,7 @@ def create_window():
             out = out_file_entry.get()
             if out == "":
                 out = "output"
-            lines = int(lines_entry.get())
+            lines = int(lines_entry.get()) if lines_entry.get() != "" else 0
 
             expected = ".csv" if not excel else ".xlsx"
             if (not out.endswith(expected)):
@@ -137,6 +151,7 @@ def create_window():
                 out_file_entry.insert(0, out)
 
             func = merge_files_into_xlsx if excel else merge_files_into_csv
+            print(f"Saving {len(files)} files to {out} with {lines} lines skipped")
             result = func(files, out, lines)
             result_label.config(text=f"Successfully saved {result} lines")
         except Exception as e:
@@ -150,7 +165,7 @@ def create_window():
     top_panel.columnconfigure(1, weight=1)
 
     # Create a label and entry widget for a number
-    lines_label = tk.Label(top_panel, text="Lines to skip", )
+    lines_label = tk.Label(top_panel, text="Lines to skip")
     lines_label.grid(column=0, row=0, padx=5, pady=5, sticky=tk.W)
     lines_entry = tk.Entry(top_panel)
     lines_entry.grid(column=1, row=0, padx=5, pady=5, sticky=tk.W)
@@ -204,6 +219,9 @@ def create_window():
     select_invert_button = tk.Button(
         button_grid, text="Invert Selection", command=select_invert)
     select_invert_button.grid(column=0, row=6, sticky=tk.NSEW)
+    delete_button = tk.Button(
+        button_grid, text="Discard selected (delete)", command=remove)
+    delete_button.grid(column=0, row=6, sticky=tk.NSEW)
 
     convert_csv_button = tk.Button(
         root, text="To .csv (ctrl-K)", command=save_csv)
@@ -227,6 +245,7 @@ def create_window():
     root.bind("<Control-l>", lambda event: save_xlsx)
     root.bind("<Control-i>", lambda event: select_folder())
     root.bind("<Control-o>", lambda event: select_outfile())
+    root.bind("<Delete>", lambda event: remove())
 
     return root
 
