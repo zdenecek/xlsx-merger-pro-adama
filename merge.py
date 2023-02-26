@@ -8,7 +8,6 @@ def merge_files_into_csv(file_list, output_file, lines_to_skip_in_each_file):
 
     with open(output_file, 'w', newline='') as outfile:                       
         writer = csv.writer(outfile)
-
         res = merge_files(file_list, writer.writerow, lines_to_skip_in_each_file)
 
     return res
@@ -29,10 +28,13 @@ def merge_files(file_list, write_function, lines_to_skip):
     row_counter = 0
     for file in file_list:                                    
             workbook = load_workbook(filename=file)               
-            sheet = workbook.worksheets[0]                        
-            row_counter += \
-                process_sheet(sheet, write_function, lines_to_skip)
+            sheet = workbook.worksheets[0]                 
+            res = process_sheet(sheet, write_function, lines_to_skip)       
+            row_counter += res
+                
             workbook.close()   
+            print(f"Processed {res} lines from {file}")
+            
     
     return row_counter
 
@@ -43,6 +45,7 @@ def process_sheet(sheet, write_function, lines_to_skip):
             continue
         write_function(row_values)
         row_counter += 1
+        
         
     return row_counter
 
