@@ -6,7 +6,7 @@ from openpyxl import load_workbook, Workbook
 
 def merge_files_into_csv(file_list, output_file, lines_to_skip_in_each_file):
 
-    with open(output_file, 'w') as outfile:                       
+    with open(output_file, 'w', newline='') as outfile:                       
         writer = csv.writer(outfile)
 
         res = merge_files(file_list, writer.writerow, lines_to_skip_in_each_file)
