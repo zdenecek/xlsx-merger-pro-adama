@@ -1,9 +1,14 @@
+import logging
 import tkinter as tk
 from tkinter import filedialog
 import os
+from logs import CustomHandler
 
-from merge import merge_files_into_xlsx, merge_files_into_csv
 
+from tasks import run_task
+from merge import Merger
+
+# This code is ugly, but it is not the point of this project
 
 def guess_output_name(input_filenames):
     for name in input_filenames:
@@ -11,10 +16,14 @@ def guess_output_name(input_filenames):
             return "sum_" + name.split("20")[0].strip()
 
 def create_window():
+    
+    logger = logging.getLogger("console_logger")
+    logger.setLevel(logging.DEBUG)
+    
 
     root = tk.Tk()
     root.title("Merge xlsx files")
-    root.geometry("600x600")
+    root.geometry("800x600")
 
     # Function to select a folder
     def select_folder():
@@ -48,6 +57,8 @@ def create_window():
             
             out_file_entry.delete(0, tk.END)
             out_file_entry.insert(0, possible_output_dir)
+            
+        root.after(1, lambda: root.focus_force())
         
 
     def select_outfile():
@@ -130,9 +141,10 @@ def create_window():
         for index in reversed(indices):
             file_listbox.delete(index)
 
+
     def save(excel=False):
 
-        result_label.config(text=f"Saving...")
+        logger.info(f"Started task")
 
         try:
             files = [os.path.join(in_folder_entry.get(), file_listbox.get(
@@ -149,39 +161,61 @@ def create_window():
                     out += expected
                 out_file_entry.delete(0, tk.END)
                 out_file_entry.insert(0, out)
+                
+            save_extra_cells = list(map(lambda x : x.strip(), extra_cells_entry.get().split(",")))
+            save_extra_cells = list(filter(lambda x : x != "", save_extra_cells))
+            merger = Merger(logger, save_extra_cells)
 
-            func = merge_files_into_xlsx if excel else merge_files_into_csv
-            print(f"Saving {len(files)} files to {out} with {lines} lines skipped")
+            func = merger.merge_files_into_xlsx if excel else merger.merge_files_into_csv
+            logger.info(f"Saving {len(files)} files to {out} with {lines} lines skipped and following extra cells: {save_extra_cells}")
             result = func(files, out, lines)
-            result_label.config(text=f"Successfully saved {result} lines")
+            logger.info(f"Successfully saved {result} lines into {out}")
         except Exception as e:
-            result_label.config(text=f"Failed: " + str(e))
+            logger.info(f"Failed saving to {out}: " + str(e))
 
-    def save_xlsx(): return save(True)
-    def save_csv(): return save(False)
+    def save_task(excel=False):
+        run_task(lambda: save(excel))
+
+    def save_xlsx(): return save_task(True)
+    def save_csv(): return save_task(False)
 
     top_panel = tk.Frame(root, padx=5, pady=5)
     top_panel.pack(side=tk.TOP, fill=tk.X)
     top_panel.columnconfigure(1, weight=1)
+    
+    row = 0
 
     # Create a label and entry widget for a number
     lines_label = tk.Label(top_panel, text="Lines to skip")
-    lines_label.grid(column=0, row=0, padx=5, pady=5, sticky=tk.W)
+    lines_label.grid(column=0, row=row, padx=5, pady=5, sticky=tk.W)
     lines_entry = tk.Entry(top_panel)
-    lines_entry.grid(column=1, row=0, padx=5, pady=5, sticky=tk.W)
+    lines_entry.insert(0, "10")
+    lines_entry.grid(column=1, row=row, padx=5, pady=5, sticky=tk.W)
+    
+    
+    # Create a label and entry widget for extra celss
+    extra_cells_label = tk.Label(top_panel, text="Extra cells to save (comma separated)")
+    extra_cells_label.grid(column=2, row=row, padx=5, pady=5, sticky=tk.W)
+    extra_cells_entry = tk.Entry(top_panel)
+    extra_cells_entry.insert(0, "K6")
+    extra_cells_entry.grid(column=3, row=row, padx=5, pady=5, sticky=tk.W)
+    
+    row += 1
 
     # Create buttons to select a folder and file
     in_folder_button = tk.Button(
         top_panel, text="Select Input Folder (ctrl+I)", command=select_folder)
-    in_folder_button.grid(column=0, row=1, sticky=tk.EW)
+    in_folder_button.grid(column=0, row=row, sticky=tk.EW)
     in_folder_entry = tk.Entry(top_panel)
-    in_folder_entry.grid(column=1, row=1, padx=5, pady=5,  sticky=tk.EW)
+    in_folder_entry.grid(column=1, columnspan=3, row=row, padx=5, pady=5,  sticky=tk.EW)
+    
+    row += 1
 
     out_file_button = tk.Button(
         top_panel, text="Select Output location (ctrl+O)", command=select_outfile)
-    out_file_button.grid(column=0, row=2, sticky=tk.EW)
+    out_file_button.grid(column=0, row=row, sticky=tk.EW)
     out_file_entry = tk.Entry(top_panel)
-    out_file_entry.grid(column=1, row=2, padx=5, pady=5,  sticky=tk.EW)
+    out_file_entry.grid(column=1, columnspan=3, row=row, padx=5, pady=5,  sticky=tk.EW)
 
     list_grid = tk.Frame(root, padx=5, pady=5)
     list_grid.pack(expand=True, fill=tk.BOTH)
@@ -211,28 +245,45 @@ def create_window():
     bottom_button.grid(column=0, row=3, sticky=tk.NSEW)
 
     deselect_button = tk.Button(
-        button_grid, text="Deselect", command=deselect_all)
+        button_grid, text="Deselect All", command=deselect_all)
     deselect_button.grid(column=0, row=4, sticky=tk.NSEW)
     select_all_button = tk.Button(
-        button_grid, text="Select All", command=select_all)
+        button_grid, text="Select All (ctrl A)", command=select_all)
     select_all_button.grid(column=0, row=5, sticky=tk.NSEW)
     select_invert_button = tk.Button(
         button_grid, text="Invert Selection", command=select_invert)
     select_invert_button.grid(column=0, row=6, sticky=tk.NSEW)
     delete_button = tk.Button(
         button_grid, text="Discard selected (delete)", command=remove)
-    delete_button.grid(column=0, row=6, sticky=tk.NSEW)
+    delete_button.grid(column=0, row=7, sticky=tk.NSEW)
+    
+    
+    button_pane = tk.Frame(root)
+    button_pane.pack(side=tk.TOP, anchor=tk.N, fill=tk.BOTH)
+    
 
     convert_csv_button = tk.Button(
-        root, text="To .csv (ctrl-K)", command=save_csv)
+        button_pane, text="To .csv (ctrl-K)", command=save_csv)
     convert_csv_button.pack(side=tk.LEFT, pady=5, padx=5)
 
     convert_xlsx_button = tk.Button(
-        root, text="To .xlsx (ctrl-L)", command=save_xlsx)
+        button_pane, text="To .xlsx (ctrl-L)", command=save_xlsx)
     convert_xlsx_button.pack(side=tk.LEFT, pady=5, padx=5)
-
-    result_label = tk.Label(root)
-    result_label.pack(side=tk.LEFT, pady=5, padx=5)
+        
+    console = tk.Text(root, pady=5, padx=5)
+    console.configure(font=("Helvetica", 8))
+    
+    console.pack(side=tk.BOTTOM, anchor=tk.W, fill=tk.BOTH, pady=5, padx=5)
+    
+    
+    def _log(line):
+        scroll = console.yview()[1] == 1.0
+        console.insert(tk.END, line + "\n")
+        if scroll: 
+            console.yview_pickplace("end")
+    
+    handler = CustomHandler(_log )
+    logger.addHandler(handler)
 
     # hotkeys
     file_listbox.bind("<Control-Up>", move_file_up)
@@ -241,8 +292,8 @@ def create_window():
     file_listbox.bind("<Control-Shift-Up>", move_file_to_top)
     file_listbox.bind("<Control-Shift-Down>", move_file_to_bottom)
 
-    root.bind("<Control-k>", lambda event: save_csv)
-    root.bind("<Control-l>", lambda event: save_xlsx)
+    root.bind("<Control-k>", lambda event: save_csv())
+    root.bind("<Control-l>", lambda event: save_xlsx())
     root.bind("<Control-i>", lambda event: select_folder())
     root.bind("<Control-o>", lambda event: select_outfile())
     root.bind("<Delete>", lambda event: remove())
